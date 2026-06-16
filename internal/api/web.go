@@ -11,7 +11,7 @@ import (
 func (a *API) Dashboard(c *gin.Context) {
 	topics := a.broker.GetAllTopics()
 	metrics := a.broker.GetMetrics()
-	topicMetrics := metrics.GetAllTopicMetrics()
+	_ = metrics.GetAllTopicMetrics()
 	groupMetrics := metrics.GetAllConsumerGroupMetrics()
 
 	type TopicView struct {

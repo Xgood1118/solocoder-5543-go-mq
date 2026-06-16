@@ -4,7 +4,6 @@ import (
 	"crypto/subtle"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -290,7 +289,7 @@ func (a *API) SetupRoutes(r *gin.Engine) {
 		{
 			topics.POST("", a.AdminAuthMiddleware(), a.CreateTopic)
 			topics.GET("", a.GetTopics)
-			topics.GET("/:name", a.GetTopic)
+			topics.GET("/:topic", a.GetTopic)
 
 			topics.POST("/:topic/publish", a.Publish)
 			topics.POST("/:topic/consume", a.Consume)
