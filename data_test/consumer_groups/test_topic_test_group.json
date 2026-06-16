@@ -1,0 +1,16 @@
+{
+  "name": "test_group",
+  "topic": "test_topic",
+  "instances": {
+    "instance_1": {
+      "id": "instance_1",
+      "last_heartbeat": 1781564910133,
+      "in_flight_count": 8
+    }
+  },
+  "offsets": {
+    "0": 1,
+    "1": 1,
+    "2": 0
+  }
+}

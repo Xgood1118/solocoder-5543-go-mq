@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .topic.Config.Name }} - SoloMQ</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; color: #333; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px 40px; }
+        .header h1 { font-size: 28px; font-weight: 600; }
+        .breadcrumb { opacity: 0.9; margin-top: 5px; font-size: 14px; }
+        .breadcrumb a { color: white; text-decoration: underline; }
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 20px; }
+        .alert { padding: 12px 20px; border-radius: 8px; margin-bottom: 20px; }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .section { background: white; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+        .section h2 { font-size: 20px; margin-bottom: 20px; color: #1a202c; display: flex; align-items: center; gap: 10px; }
+        .section h2::before { content: ''; width: 4px; height: 20px; background: #667eea; border-radius: 2px; }
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px; }
+        .info-item { background: #f7fafc; padding: 16px; border-radius: 10px; }
+        .info-label { font-size: 13px; color: #718096; margin-bottom: 6px; }
+        .info-value { font-size: 22px; font-weight: 700; color: #1a202c; }
+        .chart-container { height: 300px; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 12px 16px; background: #f7fafc; font-weight: 600; color: #4a5568; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+        td { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; }
+        tr:hover { background: #f7fafc; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .badge-green { background: #c6f6d5; color: #22543d; }
+        .badge-yellow { background: #feebc8; color: #744210; }
+        .badge-red { background: #fed7d7; color: #742a2a; }
+        .badge-blue { background: #bee3f8; color: #2a4365; }
+        .btn { padding: 8px 16px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-primary:hover { background: #5a67d8; }
+        .btn-danger { background: #e53e3e; color: white; }
+        .btn-danger:hover { background: #c53030; }
+        .btn-success { background: #38a169; color: white; }
+        .btn-success:hover { background: #2f855a; }
+        .btn-small { padding: 5px 12px; font-size: 13px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; border-radius: 12px; padding: 30px; max-width: 500px; width: 90%; }
+        .modal-content h3 { margin-bottom: 20px; color: #1a202c; }
+        .modal-content p { margin-bottom: 20px; color: #4a5568; line-height: 1.6; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 600; color: #2d3748; }
+        .form-group input, .form-group select { width: 100%; padding: 10px 12px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #667eea; }
+        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+        .btn-cancel { background: #e2e8f0; color: #2d3748; }
+        .btn-cancel:hover { background: #cbd5e0; }
+        .warning-text { color: #e53e3e; font-weight: 600; }
+        .payload { font-family: 'Courier New', monospace; background: #1a202c; color: #68d391; padding: 12px; border-radius: 6px; font-size: 13px; max-height: 100px; overflow-y: auto; }
+        .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; }
+        .tab { padding: 12px 24px; cursor: pointer; font-weight: 600; color: #718096; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+        .tab.active { color: #667eea; border-bottom-color: #667eea; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .empty { text-align: center; padding: 40px; color: #a0aec0; }
+        .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="breadcrumb"><a href="/admin?token={{ .token }}">← 返回控制台</a></div>
+        <h1>📊 {{ .topic.Config.Name }}</h1>
+        <p>分区: {{ .topic.Config.Partitions }} · 保留天数: {{ .topic.Config.RetentionDays }}天 · 最大重试: {{ .topic.Config.MaxMessageRetries }}次</p>
+    </div>
+
+    <div class="container">
+        {{ if .success }}
+        <div class="alert alert-success">{{ .success }}</div>
+        {{ end }}
+        {{ if .error }}
+        <div class="alert alert-error">{{ .error }}</div>
+        {{ end }}
+
+        {{ if .metrics }}
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">消息总数</div>
+                <div class="info-value">{{ .metrics.TotalMessages }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">处理中</div>
+                <div class="info-value" style="color: #ecc94b;">{{ .metrics.InFlightCount }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">死信队列</div>
+                <div class="info-value" style="color: #e53e3e;">{{ .metrics.DLQCount }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">消费 Lag</div>
+                <div class="info-value" style="color: #ed8936;">{{ .metrics.TotalLag }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">生产速率</div>
+                <div class="info-value" style="color: #38a169;">{{ printf "%.1f" .metrics.PublishRate }}/s</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">消费速率</div>
+                <div class="info-value" style="color: #3182ce;">{{ printf "%.1f" .metrics.ConsumeRate }}/s</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📈 消息速率趋势</h2>
+            <div class="chart-container">
+                <canvas id="rateChart"></canvas>
+            </div>
+        </div>
+        {{ end }}
+
+        <div class="section">
+            <h2>👥 消费组管理</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>消费组</th>
+                        <th>实例数</th>
+                        <th>处理中</th>
+                        <th>总 Lag</th>
+                        <th>分区 Offset</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{ range .groups }}
+                    <tr>
+                        <td><span class="badge badge-blue">{{ .Name }}</span></td>
+                        <td>{{ .Instances }}</td>
+                        <td><span class="badge badge-yellow">{{ .InFlight }}</span></td>
+                        <td><span class="badge badge-orange">{{ .TotalLag }}</span></td>
+                        <td>
+                            {{ range $p, $o := .Offsets }}
+                            <span class="badge">P{{ $p }}: {{ $o }}</span>
+                            {{ end }}
+                        </td>
+                        <td>
+                            <button class="btn btn-primary btn-small" onclick="openModifyOffset('{{ .Name }}')">修改 Offset</button>
+                        </td>
+                    </tr>
+                    {{ else }}
+                    <tr><td colspan="6" class="empty">暂无消费组</td></tr>
+                    {{ end }}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>💀 死信队列 ({{ len .dlq }})</h2>
+            {{ if .dlq }}
+            <table>
+                <thead>
+                    <tr>
+                        <th>消息 ID</th>
+                        <th>分区/Offset</th>
+                        <th>重试次数</th>
+                        <th>Payload</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{ range .dlq }}
+                    <tr>
+                        <td><code style="font-size: 12px;">{{ .ID }}</code></td>
+                        <td>P{{ .Partition }} / {{ .Offset }}</td>
+                        <td><span class="badge badge-red">{{ .RetryCount }}</span></td>
+                        <td><div class="payload">{{ .Payload }}</div></td>
+                        <td>
+                            <form method="POST" action="/admin/topic/{{ $.topic.Config.Name }}/dlq/{{ .ID }}/resend?token={{ $.token }}" onsubmit="return confirm('确定要重发这条消息吗？');">
+                                <button type="submit" class="btn btn-success btn-small">重发</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {{ end }}
+                </tbody>
+            </table>
+            {{ else }}
+            <div class="empty">
+                <div class="empty-icon">🎉</div>
+                <div>死信队列为空，一切正常！</div>
+            </div>
+            {{ end }}
+        </div>
+    </div>
+
+    <div class="modal" id="offsetModal">
+        <div class="modal-content">
+            <h3>修改消费 Offset</h3>
+            <p class="warning-text">⚠️ 警告：此操作会导致消息被重新消费，请谨慎操作！</p>
+            <form method="POST" id="offsetForm" onsubmit="return confirmModify();">
+                <div class="form-group">
+                    <label>消费组</label>
+                    <input type="text" id="modalGroup" readonly style="background: #f7fafc;">
+                </div>
+                <div class="form-group">
+                    <label>分区</label>
+                    <select id="modalPartition" name="partition" required>
+                        {{ range $i := .partitions }}
+                        <option value="{{ $i }}">分区 {{ $i }}</option>
+                        {{ end }}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>目标 Offset</label>
+                    <input type="number" name="offset" id="modalOffset" min="0" required placeholder="输入要重置到的 offset">
+                </div>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" name="confirmed" value="true" id="modalConfirm" required>
+                        我确认要修改 offset，了解这可能导致消息重复消费
+                    </label>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-cancel" onclick="closeModal()">取消</button>
+                    <button type="submit" class="btn btn-danger">确认修改</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        {{ if .metrics }}
+        const ctx = document.getElementById('rateChart').getContext('2d');
+        const timestamps = {{ .metrics.RateHistory }}.map(p => new Date(p.timestamp).toLocaleTimeString());
+        const publishData = {{ .metrics.RateHistory }}.map(p => p.publish);
+        const consumeData = {{ .metrics.RateHistory }}.map(p => p.consume);
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: timestamps,
+                datasets: [{
+                    label: '生产速率',
+                    data: publishData,
+                    borderColor: '#38a169',
+                    backgroundColor: 'rgba(56, 161, 105, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }, {
+                    label: '消费速率',
+                    data: consumeData,
+                    borderColor: '#3182ce',
+                    backgroundColor: 'rgba(49, 130, 206, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: '消息数/秒'
+                        }
+                    }
+                }
+            }
+        });
+
+        setInterval(() => location.reload(), 10000);
+        {{ end }}
+
+        function openModifyOffset(group) {
+            document.getElementById('modalGroup').value = group;
+            document.getElementById('offsetForm').action = '/admin/topic/{{ .topic.Config.Name }}/groups/' + group + '/offset?token={{ .token }}';
+            document.getElementById('offsetModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('offsetModal').classList.remove('active');
+        }
+
+        function confirmModify() {
+            return confirm('确定要修改 offset 吗？这将导致消息被重新消费！');
+        }
+
+        window.onclick = function(e) {
+            if (e.target.id === 'offsetModal') {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+</html>

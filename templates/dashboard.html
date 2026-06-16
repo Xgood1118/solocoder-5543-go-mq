@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoloMQ 控制台</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; color: #333; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px 40px; }
+        .header h1 { font-size: 28px; font-weight: 600; }
+        .header p { opacity: 0.9; margin-top: 5px; }
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 20px; }
+        .alert { padding: 12px 20px; border-radius: 8px; margin-bottom: 20px; }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .section { background: white; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+        .section h2 { font-size: 20px; margin-bottom: 20px; color: #1a202c; display: flex; align-items: center; gap: 10px; }
+        .section h2::before { content: ''; width: 4px; height: 20px; background: #667eea; border-radius: 2px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; }
+        .stat-card.green { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+        .stat-card.orange { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .stat-card.blue { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .stat-label { font-size: 13px; opacity: 0.9; }
+        .stat-value { font-size: 28px; font-weight: 700; margin-top: 8px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 12px 16px; background: #f7fafc; font-weight: 600; color: #4a5568; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+        td { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; }
+        tr:hover { background: #f7fafc; }
+        .topic-link { color: #667eea; text-decoration: none; font-weight: 600; }
+        .topic-link:hover { text-decoration: underline; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .badge-green { background: #c6f6d5; color: #22543d; }
+        .badge-yellow { background: #feebc8; color: #744210; }
+        .badge-red { background: #fed7d7; color: #742a2a; }
+        .badge-blue { background: #bee3f8; color: #2a4365; }
+        .chart-container { height: 300px; margin-top: 20px; }
+        .rank-item { display: flex; align-items: center; padding: 12px; border-radius: 8px; margin-bottom: 8px; background: #f7fafc; }
+        .rank-num { width: 30px; height: 30px; border-radius: 50%; background: #667eea; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; margin-right: 12px; }
+        .rank-info { flex: 1; }
+        .rank-topic { font-weight: 600; color: #1a202c; }
+        .rank-group { font-size: 13px; color: #718096; margin-top: 2px; }
+        .rank-lag { font-size: 18px; font-weight: 700; color: #e53e3e; }
+        .lag-bar { height: 8px; background: #e2e8f0; border-radius: 4px; margin-top: 8px; overflow: hidden; }
+        .lag-fill { height: 100%; background: linear-gradient(90deg, #f6ad55, #e53e3e); border-radius: 4px; }
+        .empty { text-align: center; padding: 40px; color: #a0aec0; }
+        .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚀 SoloMQ 消息队列控制台</h1>
+        <p>轻量级、高可靠的分布式消息队列管理平台</p>
+    </div>
+
+    <div class="container">
+        {{ if .success }}
+        <div class="alert alert-success">{{ .success }}</div>
+        {{ end }}
+        {{ if .error }}
+        <div class="alert alert-error">{{ .error }}</div>
+        {{ end }}
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Topic 总数</div>
+                <div class="stat-value">{{ len .topics }}</div>
+            </div>
+            <div class="stat-card green">
+                <div class="stat-label">消费组总数</div>
+                <div class="stat-value">{{ len .groups }}</div>
+            </div>
+            <div class="stat-card orange">
+                <div class="stat-label">总消息数</div>
+                <div class="stat-value">{{ $total := 0 }}{{ range .topics }}{{ $total = add $total .TotalMessages }}{{ end }}{{ $total }}</div>
+            </div>
+            <div class="stat-card blue">
+                <div class="stat-label">总 Lag</div>
+                <div class="stat-value">{{ $lag := 0 }}{{ range .topics }}{{ $lag = add $lag .TotalLag }}{{ end }}{{ $lag }}</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📋 Topic 列表</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Topic 名称</th>
+                        <th>分区数</th>
+                        <th>消息总数</th>
+                        <th>处理中</th>
+                        <th>死信队列</th>
+                        <th>消费 Lag</th>
+                        <th>生产速率</th>
+                        <th>消费速率</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{ range .topics }}
+                    <tr>
+                        <td><a href="/admin/topic/{{ .Name }}?token={{ $.token }}" class="topic-link">{{ .Name }}</a></td>
+                        <td>{{ .Partitions }}</td>
+                        <td>{{ .TotalMessages }}</td>
+                        <td><span class="badge badge-yellow">{{ .InFlight }}</span></td>
+                        <td><span class="badge badge-red">{{ .DLQCount }}</span></td>
+                        <td><span class="badge badge-orange">{{ .TotalLag }}</span></td>
+                        <td><span class="badge badge-green">{{ printf "%.1f" .PublishRate }}/s</span></td>
+                        <td><span class="badge badge-blue">{{ printf "%.1f" .ConsumeRate }}/s</span></td>
+                    </tr>
+                    {{ else }}
+                    <tr><td colspan="8" class="empty">暂无 Topic，请通过 API 创建</td></tr>
+                    {{ end }}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>🏆 消费组 Lag 排名</h2>
+            {{ if .groups }}
+                {{ range .groups }}
+                <div class="rank-item">
+                    <div class="rank-num">{{ addIndex $ 1 }}</div>
+                    <div class="rank-info">
+                        <div class="rank-topic">{{ .Topic }} / {{ .Group }}</div>
+                        <div class="rank-group">{{ .Instances }} 个实例 · {{ .InFlight }} 条处理中</div>
+                        <div class="lag-bar">
+                            {{ $maxLag := 1000 }}{{ if gt .TotalLag 1000 }}{{ $maxLag = .TotalLag }}{{ end }}
+                            <div class="lag-fill" style="width: {{ mul (div .TotalLag $maxLag) 100 }}%"></div>
+                        </div>
+                    </div>
+                    <div class="rank-lag">{{ .TotalLag }}</div>
+                </div>
+                {{ end }}
+            {{ else }}
+                <div class="empty">
+                    <div class="empty-icon">📊</div>
+                    <div>暂无消费组数据</div>
+                </div>
+            {{ end }}
+        </div>
+    </div>
+</body>
+</html>

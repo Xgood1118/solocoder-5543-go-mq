@@ -1,0 +1,27 @@
+{
+  "config": {
+    "name": "test_topic",
+    "partitions": 3,
+    "retention_days": 7,
+    "max_message_retries": 3,
+    "max_message_size": 1048576
+  },
+  "created_at": 1781564907317,
+  "partition_meta": [
+    {
+      "partition": 0,
+      "next_offset": 0,
+      "dlq_offset": 0
+    },
+    {
+      "partition": 1,
+      "next_offset": 0,
+      "dlq_offset": 0
+    },
+    {
+      "partition": 2,
+      "next_offset": 0,
+      "dlq_offset": 0
+    }
+  ]
+}
